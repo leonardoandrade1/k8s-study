@@ -1,0 +1,151 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: goserver-secret
+type: Opaque
+data:
+  USER: "bGVvbmFyZG8K"
+  PASSWORD: "MTIzNDU2Cg=="
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap-family
+data:
+  members: "John, Doe"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: goserver-env
+data:
+  NAME: "John"
+  AGE: "27"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: goserver
+  labels:
+    app: goserver
+spec:
+  selector:
+    matchLabels:
+      app: goserver
+  replicas: 2
+  template:
+    metadata:
+      name: goserver
+      labels:
+        app: goserver
+    spec:
+      containers:
+        - name: goserver
+          image: "leonardo/hello-go:latest"
+          imagePullPolicy: IfNotPresent
+
+          resources:
+            requests:
+              cpu: "0.05"
+              memory: 20Mi
+            limits: 
+              cpu: "0.05"
+              memory: 25Mi
+
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            periodSeconds: 3
+            failureThreshold: 30
+
+          readinessProbe: # initialized only after startupProbe be healthy
+            httpGet:
+              path: /healthz
+              port: 8000
+            periodSeconds: 3
+            failureThreshold: 1
+            # initialDelaySeconds: 10
+
+          livenessProbe: # initialized only after startupProbe be healthy
+            httpGet:
+              path: /healthz
+              port: 8000
+            periodSeconds: 5
+            failureThreshold: 1
+            timeoutSeconds: 1
+            successThreshold: 1
+            # initialDelaySeconds: 12
+          
+          envFrom:
+            - configMapRef:
+                name: goserver-env
+            - secretRef:
+                name: goserver-secret
+          volumeMounts:
+            - mountPath: "go/myfamily"
+              name: config
+              readOnly: true
+            - mountPath: "go/pvc"
+              name: goserver-volume
+
+      volumes:
+        - name: goserver-volume
+          persistentVolumeClaim:
+            claimName: goserver-pvc
+        - name: config
+          configMap:
+            name: configmap-family
+            items:
+              - key: members
+                path: "family.txt"
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: goserver-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: goserver
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 25
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: goserver-pvc
+spec:
+  resources:
+    requests:
+      storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: goserver-service
+spec:
+  selector:
+    app: goserver
+  type: ClusterIP
+  ports:
+  - name: goserver-service
+    port: 80
+    targetPort: 8000
+    protocol: TCP

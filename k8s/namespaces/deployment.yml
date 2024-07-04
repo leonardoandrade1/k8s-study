@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server-express
+spec:
+  selector:
+    matchLabels:
+      app: server-express
+  template:
+    metadata:
+      labels:
+        app: server-express
+    spec:
+      serviceAccount: server
+      containers:
+      - name: goserver
+        image: "leonardo/hello-express"
+        imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 80
+      
+---
+# Service é um método para expor a rede de um ou mais pods em execuçao. Nesse caso, fará o filtro pela label do deployment
+apiVersion: v1
+kind: Service
+metadata:
+  name: server-express-service
+spec:
+  selector:
+    app: server-express
+  type: ClusterIP
+  ports:
+  - name: server-express-service
+    port: 80
+    targetPort: 3000
+    protocol: TCP
+

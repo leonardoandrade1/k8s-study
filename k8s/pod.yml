@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goserver
+  labels:
+    app: goserver
+spec:
+  containers:
+  - name: goserver
+    image: "leonardo/hello-go:latest"
+    imagePullPolicy: IfNotPresent
+    # ports:
+    #   - containerPort: 8000

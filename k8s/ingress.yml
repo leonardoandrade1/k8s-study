@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-host
+  labels:
+    name: ingress-host
+  annotations:
+    # kubernetes.io.ingress.class: "nginx" # cloud ingress-nginx
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /goserver(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: goserver-service
+            port: 
+              number: 80
+      - path: /express(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: server-express-service
+            port: 
+              number: 80
